@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/sensu-community/sensu-plugin-sdk/sensu"
-	"github.com/sensu-community/sensu-plugin-sdk/templates"
-	corev2 "github.com/sensu/sensu-go/api/core/v2"
+	"github.com/sensu/sensu-plugin-sdk/sensu"
+	"github.com/sensu/sensu-plugin-sdk/templates"
+	corev2 "github.com/sensu/core/v2"
 	"github.com/slack-go/slack"
 	"os"
 	"strings"
@@ -45,8 +45,8 @@ var (
 		},
 	}
 
-	slackConfigOptions = []*sensu.PluginConfigOption{
-		{
+	slackConfigOptions = []sensu.ConfigOption{
+		&sensu.PluginConfigOption[string]{
 			Path:      webHookURL,
 			Env:       "SLACK_WEBHOOK_URL",
 			Argument:  webHookURL,
@@ -55,7 +55,7 @@ var (
 			Usage:     "The webhook url to send messages to",
 			Value:     &config.slackwebHookURL,
 		},
-		{
+		&sensu.PluginConfigOption[string]{
 			Path:      channel,
 			Env:       "SLACK_CHANNEL",
 			Argument:  channel,
@@ -64,7 +64,7 @@ var (
 			Usage:     "The channel to post messages to",
 			Value:     &config.slackChannel,
 		},
-		{
+		&sensu.PluginConfigOption[string]{
 			Path:      username,
 			Env:       "SLACK_USERNAME",
 			Argument:  username,
@@ -73,7 +73,7 @@ var (
 			Usage:     "The username that messages will be sent as",
 			Value:     &config.slackUsername,
 		},
-		{
+		&sensu.PluginConfigOption[string]{
 			Path:      iconURL,
 			Env:       "SLACK_ICON_URL",
 			Argument:  iconURL,
@@ -82,7 +82,7 @@ var (
 			Usage:     "A URL to an image to use as the user avatar",
 			Value:     &config.slackIconURL,
 		},
-		{
+		&sensu.PluginConfigOption[string]{
 			Path:      descriptionTemplate,
 			Env:       "SLACK_DESCRIPTION_TEMPLATE",
 			Argument:  descriptionTemplate,
@@ -91,7 +91,7 @@ var (
 			Usage:     "The Slack notification output template, in Golang text/template format",
 			Value:     &config.slackDescriptionTemplate,
 		},
-		{
+		&sensu.PluginConfigOption[bool]{
 			Path:      alertCritical,
 			Env:       "SLACK_ALERT_ON_CRITICAL",
 			Argument:  alertCritical,
