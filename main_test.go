@@ -123,7 +123,7 @@ func TestSendMessage(t *testing.T) {
 
 func TestCheckArgs(t *testing.T) {
 	assert := assert.New(t)
-	config := HandlerConfig{}
+	config = HandlerConfig{}
 	event := corev2.FixtureEvent("entity1", "check1")
 	config.slackDescriptionTemplate = "Sensu Event Details"
 	config.slackUsername = "Dummy user"
