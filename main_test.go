@@ -73,32 +73,19 @@ func TestMessageColor(t *testing.T) {
 
 	event.Check.Status = 0
 	color := messageColor(event)
-	assert.Equal("good", color)
+	assert.Equal("#36a64f", color)
 
 	event.Check.Status = 1
 	color = messageColor(event)
-	assert.Equal("warning", color)
+	assert.Equal("#ffcc00", color)
 
 	event.Check.Status = 2
 	color = messageColor(event)
-	assert.Equal("danger", color)
-}
+	assert.Equal("#ff0000", color)
 
-func TestMessageStatus(t *testing.T) {
-	assert := assert.New(t)
-	event := corev2.FixtureEvent("entity1", "check1")
-
-	event.Check.Status = 0
-	status := messageStatus(event)
-	assert.Equal("Resolved", status)
-
-	event.Check.Status = 1
-	status = messageStatus(event)
-	assert.Equal("Warning", status)
-
-	event.Check.Status = 2
-	status = messageStatus(event)
-	assert.Equal("Critical", status)
+	event.Check.Status = 3
+	color = messageColor(event)
+	assert.Equal("#6600cc", color)
 }
 
 func TestSendMessage(t *testing.T) {
@@ -107,7 +94,7 @@ func TestSendMessage(t *testing.T) {
 
 	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
-		expectedBody := `{"channel":"#test","attachments":[{"color":"good","fallback":"RESOLVED - entity1/check1:","title":"Description","fields":[{"title":"Status","value":"Resolved","short":false},{"title":"Entity","value":"entity1","short":true},{"title":"Check","value":"check1","short":true}],"blocks":null}],"replace_original":false,"delete_original":false}`
+		expectedBody := `{"channel":"#test","attachments":[{"color":"#36a64f","fallback":"RESOLVED - entity1/check1:","text":":white_check_mark: *OK* *\u003chttps://sensu.io|check1\u003e* on entity1\n_0000-00-00 00:00_\n","actions":[{"name":"","text":"View in Sensu","type":"button","url":"/n/default/events/entity1/check1"}],"mrkdwn_in":["text"],"blocks":null}],"replace_original":false,"delete_original":false}`
 		assert.Equal(expectedBody, string(body))
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(`{"ok": true}`))
@@ -116,7 +103,7 @@ func TestSendMessage(t *testing.T) {
 
 	config.slackwebHookURL = apiStub.URL
 	config.slackChannel = "#test"
-	config.slackDescriptionTemplate = "{{ .Check.Output }}"
+	config.slackDescriptionTemplate = `{{ if eq .Check.Status 0 }}:white_check_mark:{{ else if eq .Check.Occurrences 1 }}:warning:{{ else }}:repeat:{{ end }} *{{ if eq .Check.Status 0 }}OK{{ else if eq .Check.Status 1 }}WARNING{{ else if eq .Check.Status 2 }}CRITICAL{{ else }}UNKNOWN{{ end }}* *<{{ if index .Check.Annotations "runbook_url" }}{{ .Check.Annotations.runbook_url }}{{ else }}https://sensu.io{{ end }}|{{ .Check.Name }}>* on {{ .Entity.Name }}\n_0000-00-00 00:00_\n{{ .Check.Output }}`
 	err := sendMessage(event)
 	assert.NoError(err)
 }
@@ -131,5 +118,7 @@ func TestCheckArgs(t *testing.T) {
 	config.slackIconURL = "https://www.sensu.io/img/sensu-logo.png"
 	_ = os.Setenv("SLACK_WEBHOOK_URL", "http://example.com/webhook")
 	config.slackwebHookURL = os.Getenv("SLACK_WEBHOOK_URL")
+	_ = os.Setenv("SENSU_UI_URL", "http://example.com/ui")
+	config.sensuUIURL = os.Getenv("SENSU_UI_URL")
 	assert.NoError(checkArgs(event))
 }

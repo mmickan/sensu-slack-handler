@@ -13,6 +13,7 @@ import (
 // HandlerConfig contains the Slack handler configuration
 type HandlerConfig struct {
 	sensu.PluginConfig
+	sensuUIURL               string
 	slackwebHookURL          string
 	slackChannel             string
 	slackUsername            string
@@ -22,6 +23,7 @@ type HandlerConfig struct {
 }
 
 const (
+	uiURL               = "ui-url"
 	webHookURL          = "webhook-url"
 	channel             = "channel"
 	username            = "username"
@@ -32,7 +34,7 @@ const (
 	defaultChannel       = "#general"
 	defaultIconURL       = "https://www.sensu.io/img/sensu-logo.png"
 	defaultUsername      = "sensu"
-	defaultTemplate      = "{{ .Check.Output }}"
+	defaultTemplate      = `{{ if eq .Check.Status 0 }}:white_check_mark:{{ else if eq .Check.Occurrences 1 }}:warning:{{ else }}:repeat:{{ end }} *{{ if eq .Check.Status 0 }}OK{{ else if eq .Check.Status 1 }}WARNING{{ else if eq .Check.Status 2 }}CRITICAL{{ else }}UNKNOWN{{ end }}* *<{{ if index .Check.Annotations "runbook_url" }}{{ .Check.Annotations.runbook_url }}{{ else }}https://sensu.io{{ end }}|{{ .Check.Name }}>* on {{ .Entity.Name }}\n_{{ .Timestamp | UnixTime }}_\n{{ .Check.Output }}`
 	defaultAlert    bool = false
 )
 
@@ -46,6 +48,14 @@ var (
 	}
 
 	slackConfigOptions = []sensu.ConfigOption{
+		&sensu.PluginConfigOption[string]{
+			Path:      uiURL,
+			Env:       "SENSU_UI_URL",
+			Argument:  uiURL,
+			Shorthand: "s",
+			Usage:     "The Sensu UI URL",
+			Value:     &config.sensuUIURL,
+		},
 		&sensu.PluginConfigOption[string]{
 			Path:      webHookURL,
 			Env:       "SLACK_WEBHOOK_URL",
@@ -127,6 +137,10 @@ func checkArgs(_ *corev2.Event) error {
 		return fmt.Errorf("--%s or SLACK_WEBHOOK_URL environment variable is required", webHookURL)
 	}
 
+	if len(config.sensuUIURL) == 0 {
+		return fmt.Errorf("--%s or SENSU_UI_URL environment variable is required", uiURL)
+	}
+
 	return nil
 }
 
@@ -155,6 +169,10 @@ func eventSummary(event *corev2.Event, maxLength int) string {
 	return fmt.Sprintf("%s:%s", eventKey(event), output)
 }
 
+func eventURL(event *corev2.Event) string {
+	return fmt.Sprintf("%s/n/%s/events/%s/%s", config.sensuUIURL, event.Entity.Namespace, event.Entity.Name, event.Check.Name)
+}
+
 func formattedMessage(event *corev2.Event) string {
 	return fmt.Sprintf("%s - %s", formattedEventAction(event), eventSummary(event, 100))
 }
@@ -162,26 +180,13 @@ func formattedMessage(event *corev2.Event) string {
 func messageColor(event *corev2.Event) string {
 	switch event.Check.Status {
 	case 0:
-		return "good"
+		return "#36a64f"
+	case 1:
+		return "#ffcc00"
 	case 2:
-		return "danger"
+		return "#ff0000"
 	default:
-		return "warning"
-	}
-}
-
-func messageStatus(event *corev2.Event) string {
-	switch event.Check.Status {
-	case 0:
-		return "Resolved"
-	case 2:
-		if config.slackAlertCritical {
-			return "<!channel> Critical"
-		} else {
-			return "Critical"
-		}
-	default:
-		return "Warning"
+		return "#6600cc"
 	}
 }
 
@@ -193,25 +198,17 @@ func messageAttachment(event *corev2.Event) slack.Attachment {
 
 	description = strings.Replace(description, `\n`, "\n", -1)
 	attachment := slack.Attachment{
-		Title:    "Description",
-		Text:     description,
-		Fallback: formattedMessage(event),
-		Color:    messageColor(event),
-		Fields: []slack.AttachmentField{
+		Text:       description,
+		Fallback:   formattedMessage(event),
+		Color:      messageColor(event),
+		MarkdownIn: []string{
+			"text",
+		},
+		Actions:    []slack.AttachmentAction{
 			{
-				Title: "Status",
-				Value: messageStatus(event),
-				Short: false,
-			},
-			{
-				Title: "Entity",
-				Value: event.Entity.Name,
-				Short: true,
-			},
-			{
-				Title: "Check",
-				Value: event.Check.Name,
-				Short: true,
+				Text:  "View in Sensu",
+				Type:  "button",
+				URL:   eventURL(event),
 			},
 		},
 	}
