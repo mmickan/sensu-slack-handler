@@ -38,9 +38,10 @@ Available Commands:
 Flags:
   -a, --alert-on-critical             The Slack notification will alert the channel with @channel
   -c, --channel string                The channel to post messages to (default "#general")
-  -t, --description-template string   The Slack notification output template, in Golang text/template format (default "{{ .Check.Output }}")
+  -t, --description-template string   The Slack notification output template, in Golang text/template format
   -h, --help                          help for sensu-slack-handler
   -i, --icon-url string               A URL to an image to use as the user avatar (default "https://www.sensu.io/img/sensu-logo.png")
+  -s, --ui-url string                 The Slack UI URL
   -u, --username string               The username that messages will be sent as (default "sensu")
   -w, --webhook-url string            The webhook url to send messages to
 ```
@@ -49,6 +50,7 @@ Flags:
 
 |Argument               |Environment Variable       |
 |-----------------------|---------------------------|
+|--ui-url               |SENSU_UI_URL               |
 |--webhook-url          |SLACK_WEBHOOK_URL          |
 |--channel              |SLACK_CHANNEL              |
 |--username             |SLACK_USERNAME             |
